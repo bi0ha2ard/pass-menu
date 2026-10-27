@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+ab_glyph = "0.2.32"
 frizbee = "0.13.0"
+softbuffer = "0.4.8"
 thiserror = "2.0.21"
-winit = "0.30.13"
+winit = { version = "0.30.13", default-features = false, features = ["wayland", "x11", "wayland-dlopen", "x11-dl", "rwh_06"] }
