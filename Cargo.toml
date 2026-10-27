@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 frizbee = "0.13.0"
 thiserror = "2.0.21"
+winit = "0.30.13"

@@ -1,6 +1,9 @@
+use winit::event_loop::{self, EventLoop};
+
 use crate::pass::{Config, find_pw_store, get_entries};
 
 mod pass;
+mod gui;
 
 fn main() {
     let config = Config::default();
@@ -21,7 +24,12 @@ fn main() {
     }
 
 
-    let f = entries.iter().find(|e| e.name == "net/wifi_guest").unwrap();
     // f.copy_user(&config).unwrap();
     // f.auto_type(&config).unwrap();
+    //
+    let event_loop = EventLoop::new().expect("event loop");
+    event_loop.set_control_flow(event_loop::ControlFlow::Wait);
+
+    let mut app = gui::App::default();
+    event_loop.run_app(&mut app).expect("run");
 }
