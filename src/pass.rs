@@ -5,10 +5,15 @@ use std::{
     time::Duration,
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Entry {
     pub name: String,
-    path: PathBuf,
+}
+
+impl AsRef<str> for Entry {
+    fn as_ref(&self) -> &str {
+        &self.name
+    }
 }
 
 pub struct Config {
@@ -75,6 +80,8 @@ fn pass_from_stdout(stdout: &[u8]) -> Result<String> {
 }
 
 pub fn do_type(text: &str, config: &Config) -> Result<()> {
+    assert!(!text.is_empty());
+    assert!(text.len() < 1024);
     let mut cmd = std::process::Command::new(&config.do_tool_binary);
     cmd.args(&config.do_tool_type_args)
         .arg(text)
@@ -242,7 +249,7 @@ impl PassError {
 
 type Result<T> = std::result::Result<T, PassError>;
 
-fn extract_entry(path: PathBuf, prefix: &str) -> Option<Entry> {
+fn extract_entry(path: &Path, prefix: &str) -> Option<Entry> {
     if !path.is_file() {
         return None;
     }
@@ -254,11 +261,23 @@ fn extract_entry(path: PathBuf, prefix: &str) -> Option<Entry> {
     } else {
         format!("{prefix}/{stripped}")
     };
-    Some(Entry { name, path })
+    Some(Entry { name })
 }
 
-fn get_entries_impl(entries: &mut Vec<Entry>, password_store: &Path, prefix: &str) -> Result<()> {
+const MAX_RECURSION: u32 = 8;
+const MAX_ENTRIES: usize = 1024;
+
+fn get_entries_impl(
+    entries: &mut Vec<Entry>,
+    password_store: &Path,
+    prefix: &str,
+    depth: u32,
+) -> Result<()> {
     assert!(password_store.is_dir());
+    if depth > MAX_RECURSION {
+        // or error?
+        return Ok(());
+    }
     for entry in password_store
         .read_dir()
         .map_err(PassError::from_discovery)?
@@ -272,9 +291,12 @@ fn get_entries_impl(entries: &mut Vec<Entry>, password_store: &Path, prefix: &st
             } else {
                 format!("{prefix}/{suffix}")
             };
-            get_entries_impl(entries, &path, &new_prefix)?;
-        } else if let Some(entry) = extract_entry(path, prefix) {
+            get_entries_impl(entries, &path, &new_prefix, depth + 1)?;
+        } else if let Some(entry) = extract_entry(&path, prefix) {
             entries.push(entry);
+            if entries.len() > MAX_ENTRIES {
+                return Ok(());
+            }
         }
     }
     Ok(())
@@ -287,7 +309,7 @@ pub fn get_entries(password_store: &Path) -> Result<Vec<Entry>> {
         )));
     }
     let mut res = Vec::new();
-    get_entries_impl(&mut res, password_store, "")?;
+    get_entries_impl(&mut res, password_store, "", 0)?;
     Ok(res)
 }
 
