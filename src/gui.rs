@@ -11,7 +11,7 @@ use winit::{
     window::Window,
 };
 
-use crate::painting::rect;
+use crate::painting::{BG, TEXT, draw_text, draw_text_box, rect};
 
 #[derive(Debug)]
 enum AppState {
@@ -33,6 +33,7 @@ pub struct App {
     pass_entries: Vec<crate::pass::Entry>,
     matcher: frizbee::Matcher,
     matcher_results: Vec<frizbee::Match>,
+    exit_with_submit: bool,
 
     font: ab_glyph::FontRef<'static>,
 }
@@ -45,6 +46,7 @@ enum EventResult {
 }
 
 const MAX_ENTRY_LEN: usize = 1024;
+const FONT_SIZE: f32 = 48.0;
 
 impl App {
     pub fn new(
@@ -57,15 +59,21 @@ impl App {
             ctrl_down: false,
             entry_buffer: String::with_capacity(MAX_ENTRY_LEN),
             pass_entries,
+            exit_with_submit: false,
             matcher: frizbee::Matcher::new("", &frizbee::Config::default()),
             matcher_results: Vec::default(),
 
-            font: FontRef::try_from_slice(include_bytes!("/usr/share/fonts/truetype/DejaVuSans.ttf")).expect("font"),
+            font: FontRef::try_from_slice(include_bytes!(
+                "/usr/share/fonts/truetype/DejaVuSans.ttf"
+            ))
+            .expect("font"),
         }
     }
 
     pub fn get_selected_entry(&self) -> Option<&crate::pass::Entry> {
-        // TODO: if user didn't tab, return current entry buffer instead
+        if !self.exit_with_submit {
+            return None;
+        }
         self.matcher_results
             .first()
             .and_then(|hit| self.pass_entries.get(hit.index as usize))
@@ -118,6 +126,23 @@ impl App {
             unreachable!("got window event while suspended");
         };
         surface
+    }
+
+
+    fn render_ui(&mut self) {
+        println!("{} | {}", self.matcher_results.len(), self.entry_buffer);
+        let AppState::Running { surface } = &mut self.state else {
+            unreachable!("got window event while suspended");
+        };
+        let mut buffer = surface.buffer_mut().expect("buffer");
+
+        buffer.fill(BG);
+
+        let sf = self.font.as_scaled(FONT_SIZE);
+
+        draw_text_box(&mut buffer, &sf, &self.entry_buffer, 10, 10, 500, TEXT, 0x00aa0000);
+
+        buffer.present().expect("present");
     }
 }
 
@@ -195,53 +220,18 @@ impl ApplicationHandler for App {
                 }
             }
             WindowEvent::RedrawRequested => {
-                println!("{} | {}", self.matcher_results.len(), self.entry_buffer);
-                let AppState::Running { surface } = &mut self.state else {
-                    unreachable!("got window event while suspended");
-                };
-                let mut buffer = surface.buffer_mut().expect("buffer");
-
-                buffer.fill(0x00181818);
-                rect(&mut buffer, 10, 10, 60, 60, 0x00ff0000);
-                let width = buffer.width().get();
-
-                let mut caret = point(100.0, 100.0);
-
-                let mut last_glyph: Option<Glyph> = None;
-
-                let sf = self.font.as_scaled(128.0);
-
-                for c in self.entry_buffer.chars() {
-                    let mut glyph = sf.scaled_glyph(c);
-                    if let Some(previous) = last_glyph.take() {
-                        caret.x += sf.kern(previous.id, glyph.id);
-                    }
-                    glyph.position = caret;
-                    last_glyph = Some(glyph.clone());
-                    caret.x += sf.h_advance(glyph.id);
-
-                    if let Some(g) = self.font.outline_glyph(glyph) {
-                        let bounds = g.px_bounds();
-                        g.draw(|x, y, c| {
-                            if c <= 0.01 {
-                                return;
-                            }
-                            let x = x as f32 + bounds.min.x;
-                            let y = y as f32 + bounds.min.y;
-                            let g = (255.0 * c).clamp(0.0, 255.0) as u8;
-                            buffer[(y as u32 * width + x as u32) as usize] = (g as u32) << 8;
-                        });
-                    }
-                }
-
-                buffer.present().expect("present");
+                self.render_ui();
             }
             WindowEvent::KeyboardInput {
                 device_id: _,
                 event,
                 is_synthetic: _,
             } => match self.handle_keyboard(&event) {
-                EventResult::Exit | EventResult::Submitted => event_loop.exit(),
+                EventResult::Exit => event_loop.exit(),
+                EventResult::Submitted => {
+                    self.exit_with_submit = true;
+                    event_loop.exit();
+                }
                 EventResult::TextChanged => {
                     // TODO: only run matcher on tab
                     self.run_matcher();
