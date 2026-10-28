@@ -62,10 +62,8 @@ const fn in_bounds(width: u32, height: u32, x: f32, y: f32) -> Option<(u32, u32)
 
 const TEXT_BOX_PADDING: u32 = 5;
 const CURSOR_THICKNESS: u32 = 4;
-
-pub fn text_box_height(font: &PxScaleFont<&FontRef<'_>>) -> u32 {
-    font.height() as u32 + TEXT_BOX_PADDING * 2
-}
+pub const FONT_SIZE: u32 = 40;
+pub const TEXT_BOX_HEIGHT: u32 = FONT_SIZE + TEXT_BOX_PADDING * 2;
 
 pub fn draw_text_box(
     buf: &mut Buf,
@@ -77,10 +75,8 @@ pub fn draw_text_box(
     color: u32,
     bg: u32,
 ) {
-    let height = text_box_height(font);
-    println!("{}, {}, {}", font.height(), font.descent(), font.ascent());
-    rect(buf, x, y, x + width, y + height, bg);
-    let caret = draw_text(
+    rect(buf, x, y, x + width, y + TEXT_BOX_HEIGHT, bg);
+    let _caret = draw_text(
         buf,
         font,
         text,
@@ -101,6 +97,48 @@ pub fn draw_text_box(
         );
     }
     */
+}
+
+pub fn draw_label(
+    buf: &mut Buf,
+    font: &PxScaleFont<&FontRef<'_>>,
+    text: &str,
+    x: u32,
+    y: u32,
+    clip_width: u32,
+    color: u32,
+    bg: u32,
+) -> u32 {
+    let text_width = measure_text(font, text);
+    let required_width = (text_width + 2 * TEXT_BOX_PADDING).min(clip_width);
+    let text_clip = required_width.saturating_sub(TEXT_BOX_PADDING);
+    rect(buf, x, y, x + required_width, y + TEXT_BOX_HEIGHT, bg);
+    draw_text(
+        buf,
+        font,
+        text,
+        x + TEXT_BOX_PADDING,
+        y + TEXT_BOX_PADDING,
+        color,
+        x + text_clip,
+    );
+    required_width
+}
+
+pub fn measure_text(font: &PxScaleFont<&FontRef<'_>>, text: &str) -> u32 {
+    let mut caret = point(0.0, 0.0);
+
+    let mut last_glyph: Option<Glyph> = None;
+
+    for c in text.chars() {
+        let glyph = font.scaled_glyph(c);
+        if let Some(previous) = last_glyph.take() {
+            caret.x += font.kern(previous.id, glyph.id);
+        }
+        caret.x += font.h_advance(glyph.id);
+    }
+
+    caret.x.ceil() as u32
 }
 
 pub fn draw_text(
@@ -131,8 +169,7 @@ pub fn draw_text(
 
         if let Some(g) = font.outline_glyph(glyph) {
             let bounds = g.px_bounds();
-            println!("{:?}, {:?}", bounds, g.glyph().position);
-            if bounds.max.x as u32 >= clip_width {
+            if bounds.max.x as u32 > clip_width {
                 return None;
             }
             g.draw(|x, y, c| {
@@ -157,5 +194,5 @@ pub fn draw_text(
         }
     }
 
-    return Some(caret.x as u32);
+    Some(caret.x as u32)
 }
