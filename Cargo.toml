@@ -6,6 +6,10 @@ edition = "2024"
 [dependencies]
 ab_glyph = "0.2.32"
 frizbee = "0.13.0"
-softbuffer = "0.4.8"
+softbuffer = { version = "0.4.8", default-features = false }
 thiserror = "2.0.21"
-winit = { version = "0.30.13", default-features = false, features = ["wayland", "x11", "wayland-dlopen", "x11-dl", "rwh_06"] }
+winit = { version = "0.30.13", default-features = false, features = ["rwh_06"] }
+
+[features]
+x11 = ["winit/x11", "softbuffer/x11"]
+wayland = ["winit/wayland", "softbuffer/wayland"]
