@@ -49,6 +49,8 @@ where
     match_cursor: usize,
     exit_with_submit: bool,
 
+    frame: usize,
+    start_time: std::time::Instant,
     font: ab_glyph::FontRef<'static>,
 }
 
@@ -85,6 +87,8 @@ where
             matcher_results: Vec::default(),
             match_cursor: 0,
 
+            frame: 0,
+            start_time: std::time::Instant::now(),
             font: FontRef::try_from_slice(include_bytes!(
                 "/usr/share/fonts/truetype/DejaVuSans.ttf"
             ))
@@ -133,6 +137,10 @@ where
             PhysicalKey::Code(KeyCode::Enter) => return EventResult::Submitted,
             PhysicalKey::Code(KeyCode::Tab) => return EventResult::AutocompleteSelect,
             _ => {}
+        }
+        // X11 keyboard event leak from launch hotkey
+        if self.frame < 2 && self.start_time.elapsed() < std::time::Duration::from_millis(16) {
+            return EventResult::Nothing;
         }
         if let Some(t) = key_event.text.as_ref() {
             if self.entry_buffer.len() >= MAX_ENTRY_LEN {
@@ -344,6 +352,7 @@ where
             }
             WindowEvent::RedrawRequested => {
                 self.render_ui();
+                self.frame += 1;
             }
             WindowEvent::KeyboardInput {
                 device_id: _,
@@ -374,6 +383,7 @@ where
                 }
                 EventResult::Nothing => {}
             },
+
             winit::event::WindowEvent::ModifiersChanged(modifiers) => {
                 self.ctrl_down = modifiers.state().control_key();
             }
