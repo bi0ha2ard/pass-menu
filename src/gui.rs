@@ -25,7 +25,10 @@ enum AppState {
     },
 }
 
-pub struct App {
+pub struct App<'a, Candidate>
+where
+    Candidate: AsRef<str>,
+{
     context: Context<OwnedDisplayHandle>,
     state: AppState,
     ctrl_down: bool,
@@ -33,7 +36,7 @@ pub struct App {
     entry_buffer: String,
 
     prompt: &'static str,
-    pass_entries: Vec<crate::pass::Entry>,
+    pass_entries: &'a [Candidate],
     matcher: frizbee::Matcher,
     matcher_results: Vec<frizbee::Match>,
     match_cursor: usize,
@@ -53,11 +56,14 @@ enum EventResult {
 const WINDOW_WIDTH: u32 = 800;
 const MAX_ENTRY_LEN: usize = 1024;
 
-impl App {
+impl<'a, Candidate> App<'a, Candidate>
+where
+    Candidate: AsRef<str>,
+{
     pub fn new(
         context: Context<OwnedDisplayHandle>,
         prompt: &'static str,
-        pass_entries: Vec<crate::pass::Entry>,
+        pass_entries: &'a [Candidate],
     ) -> Self {
         Self {
             context,
@@ -79,7 +85,7 @@ impl App {
         }
     }
 
-    pub fn get_selected_entry(&self) -> Option<&crate::pass::Entry> {
+    pub fn get_selected_entry(&self) -> Option<&Candidate> {
         if !self.exit_with_submit {
             return None;
         }
@@ -232,7 +238,7 @@ impl App {
                 x += draw_label(
                     &mut buffer,
                     &sf,
-                    &entry.name,
+                    entry.as_ref(),
                     x,
                     y,
                     remaining_width,
@@ -250,7 +256,10 @@ impl App {
     }
 }
 
-impl ApplicationHandler for App {
+impl<Candidate> ApplicationHandler for App<'_, Candidate>
+where
+    Candidate: AsRef<str>,
+{
     fn new_events(
         &mut self,
         event_loop: &winit::event_loop::ActiveEventLoop,

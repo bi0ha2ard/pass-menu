@@ -17,7 +17,7 @@ fn main() {
     event_loop.set_control_flow(event_loop::ControlFlow::Wait);
     let context = Context::new(event_loop.owned_display_handle()).expect("display handle");
 
-    let mut app = gui::App::new(context, "Copy user", entries);
+    let mut app = gui::App::new(context, "Copy user", &entries);
 
     event_loop.run_app(&mut app).expect("run");
 
