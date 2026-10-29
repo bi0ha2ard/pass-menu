@@ -1,13 +1,35 @@
+use std::env;
+
 use softbuffer::Context;
 use winit::event_loop::{self, EventLoop};
 
 use crate::pass::{Config, find_pw_store, get_entries};
 
 mod gui;
-mod pass;
 mod painting;
+mod pass;
+
+enum Action {
+    User,
+    Pass,
+    AutoType,
+}
 
 fn main() {
+    let (command, prompt) = if let Some(arg) = env::args().nth(1) {
+        match arg.as_str() {
+            "user" => (Action::User, "Copy user"),
+            "pass" => (Action::Pass, "Copy password"),
+            "autotype" => (Action::AutoType, "Autotype"),
+            _ => {
+                eprintln!("Invalid argument '{arg}', pass one of 'user', 'pass', 'autotype'");
+                return;
+            }
+        }
+    } else {
+        eprintln!("Action required, pass one of 'user', 'pass', 'autotype'");
+        return;
+    };
     let pw_dir = find_pw_store().unwrap();
     let mut entries = get_entries(&pw_dir).unwrap();
     entries.sort_unstable();
@@ -17,13 +39,18 @@ fn main() {
     event_loop.set_control_flow(event_loop::ControlFlow::Wait);
     let context = Context::new(event_loop.owned_display_handle()).expect("display handle");
 
-    let mut app = gui::App::new(context, "Copy user", &entries);
+    let mut app = gui::App::new(context, prompt, &entries);
 
     event_loop.run_app(&mut app).expect("run");
 
     let config = Config::default();
     if let Some(e) = app.get_selected_entry() {
         println!("{}", e.name);
-        e.copy_user(&config).expect("copy");
+        match command {
+            Action::User => e.copy_user(&config),
+            Action::Pass => e.copy_pass(&config),
+            Action::AutoType => e.auto_type(&config),
+        }
+        .expect("Action");
     }
 }
