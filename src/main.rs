@@ -13,6 +13,7 @@ enum Action {
     User,
     Pass,
     AutoType,
+    OpenUrl,
 }
 
 fn main() {
@@ -21,13 +22,16 @@ fn main() {
             "user" => (Action::User, "Copy user"),
             "pass" => (Action::Pass, "Copy password"),
             "autotype" => (Action::AutoType, "Autotype"),
+            "open" => (Action::OpenUrl, "Open URL"),
             _ => {
-                eprintln!("Invalid argument '{arg}', pass one of 'user', 'pass', 'autotype'");
+                eprintln!(
+                    "Invalid argument '{arg}', pass one of 'user', 'pass', 'autotype', 'open'"
+                );
                 return;
             }
         }
     } else {
-        eprintln!("Action required, pass one of 'user', 'pass', 'autotype'");
+        eprintln!("Action required, pass one of 'user', 'pass', 'autotype', 'open'");
         return;
     };
     let pw_dir = find_pw_store().unwrap();
@@ -50,6 +54,7 @@ fn main() {
             Action::User => e.copy_user(&config),
             Action::Pass => e.copy_pass(&config),
             Action::AutoType => e.auto_type(&config),
+            Action::OpenUrl => e.open_url(&config),
         }
         .expect("Action");
     }

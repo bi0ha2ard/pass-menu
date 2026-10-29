@@ -23,6 +23,7 @@ pub struct Config {
     do_tool_binary: String,
     do_tool_type_args: Vec<String>,
     do_tool_tab_args: Vec<String>,
+    open_tool: String,
 }
 
 impl Default for Config {
@@ -44,12 +45,14 @@ impl Default for Config {
                 "--clearmodifiers".to_string(),
                 "Tab".to_string(),
             ],
+            open_tool: "xdg-open".to_string(),
         }
     }
 }
 
 const GPG_EXT: &str = ".gpg";
 const USER_FIELD: &str = "user:";
+const URL_FIELD: &str = "url:";
 
 fn field_from_stdout(stdout: &[u8], field: &str) -> Result<String> {
     for line in stdout.split(|c| *c == b'\n').skip(2) {
@@ -197,6 +200,21 @@ impl Entry {
         sleep(Duration::from_millis(100));
         do_type(&pass, config)
     }
+
+    pub fn open_url(&self, config: &Config) -> Result<()> {
+        let stdout = self.get_pass_stdout(config)?;
+        let url = field_from_stdout(&stdout, URL_FIELD)?;
+
+        let mut cmd = std::process::Command::new(&config.open_tool);
+        cmd.arg(&url)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+
+        let mut handle = cmd.spawn().map_err(PassError::from_url_open_spawn)?;
+        handle.wait().map_err(PassError::from_url_open_spawn)?;
+        Ok(())
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -215,6 +233,9 @@ pub enum PassError {
 
     #[error("Autotype failed")]
     AutoTypeError(std::io::Error),
+
+    #[error("Autotype failed")]
+    UrlOpenError(std::io::Error),
 
     #[error("Could not send data to child process")]
     IOError,
@@ -240,6 +261,10 @@ impl PassError {
 
     fn from_clip_spawn(err: std::io::Error) -> Self {
         Self::ClipError(err)
+    }
+
+    fn from_url_open_spawn(err: std::io::Error) -> Self {
+        Self::UrlOpenError(err)
     }
 
     fn from_autotype_spawn(err: std::io::Error) -> Self {
