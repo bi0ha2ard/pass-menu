@@ -23,6 +23,13 @@ enum AppState {
     Running {
         surface: Surface<OwnedDisplayHandle, Rc<Window>>,
     },
+    Terminated,
+}
+
+impl AppState {
+    fn close(&mut self) {
+        drop(std::mem::replace(self, AppState::Terminated));
+    }
 }
 
 pub struct App<'a, Candidate>
@@ -317,15 +324,14 @@ where
     fn window_event(
         &mut self,
         event_loop: &winit::event_loop::ActiveEventLoop,
-        window_id: winit::window::WindowId,
+        _window_id: winit::window::WindowId,
         event: winit::event::WindowEvent,
     ) {
-        if self.get_surface().window().id() != window_id {
-            return;
-        }
-
         match event {
             WindowEvent::CloseRequested => {
+                self.state.close();
+            }
+            WindowEvent::Destroyed => {
                 event_loop.exit();
             }
             WindowEvent::Resized(size) => {
@@ -344,10 +350,10 @@ where
                 event,
                 is_synthetic: _,
             } => match self.handle_keyboard(&event) {
-                EventResult::Exit => event_loop.exit(),
+                EventResult::Exit => self.state.close(),
                 EventResult::Submitted => {
                     self.exit_with_submit = true;
-                    event_loop.exit();
+                    self.state.close();
                 }
                 EventResult::AutocompleteSelect => {
                     let was_autcompleting = self.autocomplete_started;
