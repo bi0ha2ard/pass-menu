@@ -28,45 +28,37 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        let (clip_binary, clip_args) = {
-            #[cfg(feature = "x11")] {
-                ("xclip".to_string(),
-                vec![
-                "-selection".to_string(),
-                "clipboard".to_string(),
-                "-rmlastnl".to_string(),
-                "-wait".to_string(),
-                "45000".to_string(),
-                ])
-            }
-            #[cfg(feature = "wayland")] {
-                ("wl-copy".to_string(),
-                vec![
-                "--trim-newline".to_string(),
-                "--paste-once".to_string(),
-                "--sensitive".to_string(),
-                ])
-
-            }
+        let (clip_binary, clip_args) = cfg_select! {
+            feature = "x11" => ("xclip".to_string(),
+            vec![
+            "-selection".to_string(),
+            "clipboard".to_string(),
+            "-rmlastnl".to_string(),
+            "-wait".to_string(),
+            "45000".to_string(),
+            ]),
+            feature = "wayland" => ("wl-copy".to_string(),
+            vec![
+            "--trim-newline".to_string(),
+            "--paste-once".to_string(),
+            "--sensitive".to_string(),
+            ])
         };
-        let (do_tool_binary, do_tool_type_args, do_tool_tab_args) = {
-            #[cfg(feature = "x11")] {
-                ("xdotool".to_string(),
-                vec!["type".to_string(), "--clearmodifiers".to_string()],
-                vec![
-                "key".to_string(),
-                "--clearmodifiers".to_string(),
-                "Tab".to_string(),
-                ])
-            }
-            #[cfg(feature = "wayland")] {
+        let (do_tool_binary, do_tool_type_args, do_tool_tab_args) = cfg_select! {
+            feature = "x11" => ("xdotool".to_string(),
+            vec!["type".to_string(), "--clearmodifiers".to_string()],
+            vec![
+            "key".to_string(),
+            "--clearmodifiers".to_string(),
+            "Tab".to_string(),
+            ]),
+            feature = "wayland" =>
                 ("wtype".to_string(),
                 vec![ "-d".to_string(), "16".to_string(), "-".to_string()],
                 vec![
                 "-k".to_string(),
                 "Tab".to_string(),
                 ])
-            }
 
         };
         Self {

@@ -13,7 +13,7 @@ use winit::{
 };
 
 use crate::painting::{
-    BG, BG_ALTERNATE, BG_PROMPT, FONT_SIZE, TEXT, TEXT_BOX_HEIGHT, draw_label, draw_text_box, hline
+    BG, BG_ALTERNATE, BG_PROMPT, FONT_SIZE, TEXT, TEXT_BOX_HEIGHT, draw_label, draw_text_box, hline,
 };
 
 const MAX_VISIBLE_SUGGESTIONS: usize = 7;
