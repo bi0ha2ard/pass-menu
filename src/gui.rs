@@ -12,7 +12,9 @@ use winit::{
     window::Window,
 };
 
-use crate::painting::{BG, FONT_SIZE, TEXT, TEXT_BOX_HEIGHT, draw_label, draw_text_box};
+use crate::painting::{
+    BG, BG_ALTERNATE, BG_PROMPT, FONT_SIZE, TEXT, TEXT_BOX_HEIGHT, draw_label, draw_text_box, hline
+};
 
 const MAX_VISIBLE_SUGGESTIONS: usize = 7;
 
@@ -67,6 +69,10 @@ enum EventResult {
 
 const WINDOW_WIDTH: u32 = 800;
 const MAX_ENTRY_LEN: usize = 1024;
+fn get_required_window_height(matches: usize) -> u32 {
+    let matches_height = (matches.min(MAX_VISIBLE_SUGGESTIONS) as u32) * TEXT_BOX_HEIGHT;
+    matches_height + TEXT_BOX_HEIGHT + u32::from(matches > 0)
+}
 
 impl<'a, Candidate> App<'a, Candidate>
 where
@@ -171,7 +177,7 @@ where
                 .window()
                 .request_inner_size(PhysicalSize {
                     width: WINDOW_WIDTH,
-                    height: (1 + new_matches.min(MAX_VISIBLE_SUGGESTIONS) as u32) * TEXT_BOX_HEIGHT,
+                    height: get_required_window_height(new_matches),
                 });
         }
         self.get_surface().window().request_redraw();
@@ -199,14 +205,12 @@ where
     }
 
     fn render_ui(&mut self) {
-        println!("{} | {}", self.matcher_results.len(), self.entry_buffer);
         let AppState::Running { surface } = &mut self.state else {
             unreachable!("got window event while suspended");
         };
         let mut buffer = surface.buffer_mut().expect("buffer");
 
-        // TODO: potentially redundant if all boxes do a fill anyway
-        buffer.fill(BG);
+        buffer.fill(BG_ALTERNATE);
 
         let sf = self.font.as_scaled(FONT_SIZE as f32);
 
@@ -221,9 +225,9 @@ where
             self.prompt,
             x,
             y,
-            WINDOW_WIDTH / 3,
-            BG,
-            TEXT,
+            WINDOW_WIDTH / 2,
+            BG_ALTERNATE,
+            Some(BG_PROMPT),
         );
 
         draw_text_box(
@@ -234,10 +238,15 @@ where
             y,
             width.saturating_sub(x),
             TEXT,
-            0x00aa0000,
+            Some(BG),
+            Some(BG_PROMPT),
         );
 
         y += TEXT_BOX_HEIGHT;
+        if y < height && !self.matcher_results.is_empty() {
+            hline(&mut buffer, 0, y, width, 0);
+            y += 1;
+        }
         x = 0;
 
         // Keep cursor in the middle
@@ -262,18 +271,19 @@ where
                 .get(start)
                 .and_then(|e| self.pass_entries.get(e.index as usize))
         {
+            let x_offs = if start == self.match_cursor { 10 } else { 0 };
             draw_label(
                 &mut buffer,
                 &sf,
                 entry.as_ref(),
-                x,
+                x + x_offs,
                 y,
-                width,
-                TEXT,
+                width - x_offs,
+                if start == self.match_cursor { TEXT } else { BG },
                 if start == self.match_cursor {
-                    0x0000bb0000
+                    Some(BG)
                 } else {
-                    BG
+                    None
                 },
             );
             start += 1;

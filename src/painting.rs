@@ -27,10 +27,12 @@ const fn mix(dest: u32, src: u32, amount: f32) -> u32 {
     rgb(r, g, b)
 }
 
-pub const BG: u32 = rgb(0x18, 0x18, 0x18);
-pub const TEXT: u32 = rgb(0xaa, 0xaa, 0xaa);
+pub const BG: u32 = rgb(0xfd, 0xff, 0x02);
+pub const BG_ALTERNATE: u32 = rgb(0x1d, 0x5c, 0x72);
+pub const BG_PROMPT: u32 = rgb(0x63, 0xe3, 0x52);
+pub const TEXT: u32 = rgb(0x00, 0x00, 0x00);
 
-pub fn rect(buf: &mut Buf, x0: u32, y0: u32, x1: u32, y1: u32, color: u32) {
+pub fn fill_rect(buf: &mut Buf, x0: u32, y0: u32, x1: u32, y1: u32, color: u32) {
     let width = buf.width().get();
     let height = buf.height().get();
     let x0 = x0.clamp(0, width);
@@ -48,6 +50,42 @@ pub fn rect(buf: &mut Buf, x0: u32, y0: u32, x1: u32, y1: u32, color: u32) {
     }
 }
 
+pub fn rect(buf: &mut Buf, x0: u32, y0: u32, x1: u32, y1: u32, color: u32) {
+    let width = buf.width().get();
+    let height = buf.height().get();
+    let x0 = x0.clamp(0, width);
+    let x1 = x1.clamp(0, width);
+    let y0 = y0.clamp(0, height);
+    let y1 = y1.clamp(0, height);
+
+    assert!(x0 < x1);
+    assert!(y0 < y1);
+
+    for y in [y0, y1.saturating_sub(1)] {
+        for x in x0..x1 {
+            buf[y as usize * width as usize + x as usize] = color;
+        }
+    }
+
+    for y in y0..y1 {
+        for x in [x0, x1 - 1] {
+            buf[y as usize * width as usize + x as usize] = color;
+        }
+    }
+}
+
+pub fn hline(buf: &mut Buf, x0: u32, y0: u32, x1: u32, color: u32) {
+    let width = buf.width().get();
+    let height = buf.height().get();
+    let x0 = x0.clamp(0, width);
+    let x1 = x1.clamp(0, width);
+    let y0 = y0.clamp(0, height);
+
+    for x in x0..x1 {
+        buf[y0 as usize * width as usize + x as usize] = color;
+    }
+}
+
 const fn in_bounds(width: u32, height: u32, x: f32, y: f32) -> Option<(u32, u32)> {
     if x < 0.0 || y < 0.0 {
         return None;
@@ -61,7 +99,7 @@ const fn in_bounds(width: u32, height: u32, x: f32, y: f32) -> Option<(u32, u32)
 }
 
 const TEXT_BOX_PADDING: u32 = 5;
-const CURSOR_THICKNESS: u32 = 4;
+const _CURSOR_THICKNESS: u32 = 4;
 pub const FONT_SIZE: u32 = 40;
 pub const TEXT_BOX_HEIGHT: u32 = FONT_SIZE + TEXT_BOX_PADDING * 2;
 
@@ -73,9 +111,15 @@ pub fn draw_text_box(
     y: u32,
     width: u32,
     color: u32,
-    bg: u32,
+    bg: Option<u32>,
+    border: Option<u32>,
 ) {
-    rect(buf, x, y, x + width, y + TEXT_BOX_HEIGHT, bg);
+    if let Some(bg) = bg {
+        fill_rect(buf, x, y, x + width, y + TEXT_BOX_HEIGHT, bg);
+    }
+    if let Some(border) = border {
+        rect(buf, x, y, x + width, y + TEXT_BOX_HEIGHT, border);
+    }
     let _caret = draw_text(
         buf,
         font,
@@ -107,12 +151,14 @@ pub fn draw_label(
     y: u32,
     clip_width: u32,
     color: u32,
-    bg: u32,
+    bg: Option<u32>,
 ) -> u32 {
     let text_width = measure_text(font, text);
     let required_width = (text_width + 2 * TEXT_BOX_PADDING).min(clip_width);
     let text_clip = required_width.saturating_sub(TEXT_BOX_PADDING);
-    rect(buf, x, y, x + required_width, y + TEXT_BOX_HEIGHT, bg);
+    if let Some(bg) = bg {
+        fill_rect(buf, x, y, x + required_width, y + TEXT_BOX_HEIGHT, bg);
+    }
     draw_text(
         buf,
         font,
