@@ -3,7 +3,7 @@ use std::env;
 use softbuffer::Context;
 use winit::event_loop::{self, EventLoop};
 
-use crate::pass::{Config, find_pw_store, get_entries};
+use crate::pass::{Config, Result, find_pw_store, get_entries};
 
 mod gui;
 mod painting;
@@ -16,7 +16,7 @@ enum Action {
     OpenUrl,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let (command, prompt) = if let Some(arg) = env::args().nth(1) {
         match arg.as_str() {
             "user" => (Action::User, "Copy user"),
@@ -27,15 +27,15 @@ fn main() {
                 eprintln!(
                     "Invalid argument '{arg}', pass one of 'user', 'pass', 'autotype', 'open'"
                 );
-                return;
+                return Err(pass::PassError::ArgFail);
             }
         }
     } else {
         eprintln!("Action required, pass one of 'user', 'pass', 'autotype', 'open'");
-        return;
+        return Err(pass::PassError::ArgFail);
     };
-    let pw_dir = find_pw_store().unwrap();
-    let mut entries = get_entries(&pw_dir).unwrap();
+    let pw_dir = find_pw_store()?;
+    let mut entries = get_entries(&pw_dir)?;
     entries.sort_unstable();
     entries.dedup();
 
@@ -50,12 +50,12 @@ fn main() {
     let config = Config::default();
     if let Some(e) = app.get_selected_entry() {
         println!("{}", e.name);
-        match command {
+        return match command {
             Action::User => e.copy_user(&config),
             Action::Pass => e.copy_pass(&config),
             Action::AutoType => e.auto_type(&config),
             Action::OpenUrl => e.open_url(&config),
-        }
-        .expect("Action");
+        };
     }
+    Ok(())
 }

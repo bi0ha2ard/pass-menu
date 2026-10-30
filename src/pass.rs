@@ -101,7 +101,10 @@ pub fn do_type(text: &str, config: &Config) -> Result<()> {
 
     let res = handle.wait().map_err(PassError::from_autotype_spawn)?;
     if !res.success() {
-        return Err(PassError::ProcessExited(res.code().unwrap_or_default()));
+        return Err(PassError::ProcessExited(
+            "dotool",
+            res.code().unwrap_or_default(),
+        ));
     }
     Ok(())
 }
@@ -118,7 +121,10 @@ pub fn do_tab(config: &Config) -> Result<()> {
         .wait()
         .map_err(PassError::from_autotype_spawn)?;
     if !res.success() {
-        return Err(PassError::ProcessExited(res.code().unwrap_or_default()));
+        return Err(PassError::ProcessExited(
+            "dotool",
+            res.code().unwrap_or_default(),
+        ));
     }
     Ok(())
 }
@@ -137,7 +143,10 @@ impl Entry {
             .wait()
             .map_err(PassError::from_pass_spawn)?;
         if !res.success() {
-            return Err(PassError::ProcessExited(res.code().unwrap_or_default()));
+            return Err(PassError::ProcessExited(
+                "pass",
+                res.code().unwrap_or_default(),
+            ));
         }
         Ok(())
     }
@@ -155,6 +164,7 @@ impl Entry {
             .map_err(PassError::from_pass_spawn)?;
         if !res.status.success() {
             return Err(PassError::ProcessExited(
+                "pass",
                 res.status.code().unwrap_or_default(),
             ));
         }
@@ -241,13 +251,16 @@ pub enum PassError {
     IOError,
 
     #[error("Pass exited non-zero")]
-    ProcessExited(i32),
+    ProcessExited(&'static str, i32),
 
     #[error("Could not parse as UTF-8")]
     DecodeFail,
 
     #[error("Could not extract field")]
     ParseFail(String),
+
+    #[error("Invalid argument")]
+    ArgFail,
 }
 
 impl PassError {
@@ -272,7 +285,7 @@ impl PassError {
     }
 }
 
-type Result<T> = std::result::Result<T, PassError>;
+pub type Result<T> = std::result::Result<T, PassError>;
 
 fn extract_entry(path: &Path, prefix: &str) -> Option<Entry> {
     if !path.is_file() {
