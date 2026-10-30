@@ -12,4 +12,4 @@ winit = { version = "0.30.13", default-features = false, features = ["rwh_06"] }
 
 [features]
 x11 = ["winit/x11", "softbuffer/x11"]
-wayland = ["winit/wayland", "softbuffer/wayland"]
+wayland = ["winit/wayland", "softbuffer/wayland", "winit/wayland-dlopen"]

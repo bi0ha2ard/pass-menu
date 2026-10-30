@@ -70,6 +70,11 @@ enum EventResult {
 const WINDOW_WIDTH: u32 = 800;
 const MAX_ENTRY_LEN: usize = 1024;
 fn get_required_window_height(matches: usize) -> u32 {
+    #[cfg(feature = "wayland")]
+    {
+        // TODO: hyprland doesn't resize the window for some reason, always show the lower part
+        return (MAX_VISIBLE_SUGGESTIONS as u32 + 1) * TEXT_BOX_HEIGHT + 1;
+    }
     let matches_height = (matches.min(MAX_VISIBLE_SUGGESTIONS) as u32) * TEXT_BOX_HEIGHT;
     matches_height + TEXT_BOX_HEIGHT + u32::from(matches > 0)
 }
@@ -314,7 +319,7 @@ where
                                 .with_resizable(false)
                                 .with_inner_size(PhysicalSize {
                                     width: WINDOW_WIDTH,
-                                    height: TEXT_BOX_HEIGHT,
+                                    height: get_required_window_height(0),
                                 }),
                         )
                         .unwrap(),

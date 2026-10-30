@@ -28,23 +28,54 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Self {
-            pass_binary: "pass".to_string(),
-            clip_binary: "xclip".to_string(),
-            clip_args: vec![
+        let (clip_binary, clip_args) = {
+            #[cfg(feature = "x11")] {
+                ("xclip".to_string(),
+                vec![
                 "-selection".to_string(),
                 "clipboard".to_string(),
                 "-rmlastnl".to_string(),
                 "-wait".to_string(),
                 "45000".to_string(),
-            ],
-            do_tool_binary: "xdotool".to_string(),
-            do_tool_type_args: vec!["type".to_string(), "--clearmodifiers".to_string()],
-            do_tool_tab_args: vec![
+                ])
+            }
+            #[cfg(feature = "wayland")] {
+                ("wl-copy".to_string(),
+                vec![
+                "--trim-newline".to_string(),
+                "--paste-once".to_string(),
+                "--sensitive".to_string(),
+                ])
+
+            }
+        };
+        let (do_tool_binary, do_tool_type_args, do_tool_tab_args) = {
+            #[cfg(feature = "x11")] {
+                ("xdotool".to_string(),
+                vec!["type".to_string(), "--clearmodifiers".to_string()],
+                vec![
                 "key".to_string(),
                 "--clearmodifiers".to_string(),
                 "Tab".to_string(),
-            ],
+                ])
+            }
+            #[cfg(feature = "wayland")] {
+                ("wtype".to_string(),
+                vec![ "-d".to_string(), "16".to_string(), "-".to_string()],
+                vec![
+                "-k".to_string(),
+                "Tab".to_string(),
+                ])
+            }
+
+        };
+        Self {
+            pass_binary: "pass".to_string(),
+            clip_binary,
+            clip_args,
+            do_tool_binary,
+            do_tool_type_args,
+            do_tool_tab_args,
             open_tool: "xdg-open".to_string(),
         }
     }
@@ -87,7 +118,6 @@ pub fn do_type(text: &str, config: &Config) -> Result<()> {
     assert!(text.len() < 1024);
     let mut cmd = std::process::Command::new(&config.do_tool_binary);
     cmd.args(&config.do_tool_type_args)
-        .arg(text)
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
