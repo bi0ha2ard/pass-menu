@@ -14,6 +14,8 @@ use winit::{
 
 use crate::painting::{BG, FONT_SIZE, TEXT, TEXT_BOX_HEIGHT, draw_label, draw_text_box};
 
+const MAX_VISIBLE_SUGGESTIONS: usize = 7;
+
 #[derive(Debug)]
 enum AppState {
     Initial,
@@ -39,6 +41,7 @@ where
     context: Context<OwnedDisplayHandle>,
     state: AppState,
     ctrl_down: bool,
+    shift_down: bool,
     autocomplete_started: bool,
     entry_buffer: String,
 
@@ -57,7 +60,7 @@ where
 enum EventResult {
     Exit,
     TextChanged,
-    AutocompleteSelect,
+    AutocompleteSelect(bool),
     Submitted,
     Nothing,
 }
@@ -78,6 +81,7 @@ where
             context,
             state: AppState::Initial,
             ctrl_down: false,
+            shift_down: false,
             autocomplete_started: false,
             prompt,
             entry_buffer: String::with_capacity(MAX_ENTRY_LEN),
@@ -135,10 +139,13 @@ where
                 return self.backspace(self.ctrl_down);
             }
             PhysicalKey::Code(KeyCode::Enter) => return EventResult::Submitted,
-            PhysicalKey::Code(KeyCode::Tab) => return EventResult::AutocompleteSelect,
+            PhysicalKey::Code(KeyCode::Tab) => {
+                return EventResult::AutocompleteSelect(!self.shift_down);
+            }
             _ => {}
         }
         // X11 keyboard event leak from launch hotkey
+        #[cfg(feature = "x11")]
         if self.frame < 2 && self.start_time.elapsed() < std::time::Duration::from_millis(16) {
             return EventResult::Nothing;
         }
@@ -153,16 +160,18 @@ where
     }
 
     fn gui_matcher_update(&mut self) {
-        let had_matches = !self.matcher_results.is_empty();
+        let prev_matches = self.matcher_results.len();
         self.run_matcher();
-        let has_matches = !self.matcher_results.is_empty();
-        if had_matches != has_matches {
+        let new_matches = self.matcher_results.len();
+        if prev_matches != new_matches
+            && !(prev_matches >= MAX_VISIBLE_SUGGESTIONS && new_matches >= MAX_VISIBLE_SUGGESTIONS)
+        {
             let _ = self
                 .get_surface()
                 .window()
                 .request_inner_size(PhysicalSize {
                     width: WINDOW_WIDTH,
-                    height: (1 + u32::from(has_matches)) * TEXT_BOX_HEIGHT,
+                    height: (1 + new_matches.min(MAX_VISIBLE_SUGGESTIONS) as u32) * TEXT_BOX_HEIGHT,
                 });
         }
         self.get_surface().window().request_redraw();
@@ -231,40 +240,44 @@ where
         y += TEXT_BOX_HEIGHT;
         x = 0;
 
-        if y < height {
-            x += draw_label(
+        // Keep cursor in the middle
+        let mut start = self
+            .match_cursor
+            .saturating_sub(MAX_VISIBLE_SUGGESTIONS / 2);
+        const {
+            assert!(MAX_VISIBLE_SUGGESTIONS % 2 == 1);
+        }
+        let end =
+            (self.match_cursor + MAX_VISIBLE_SUGGESTIONS / 2 + 1).min(self.matcher_results.len());
+        // once we reach the end of the list, move to the end
+        if self.matcher_results.len() > MAX_VISIBLE_SUGGESTIONS
+            && (end.saturating_sub(start)) < MAX_VISIBLE_SUGGESTIONS
+        {
+            start = end.saturating_sub(MAX_VISIBLE_SUGGESTIONS);
+        }
+
+        while y < height
+            && let Some(entry) = self
+                .matcher_results
+                .get(start)
+                .and_then(|e| self.pass_entries.get(e.index as usize))
+        {
+            draw_label(
                 &mut buffer,
                 &sf,
-                &format!("{}/{}", self.matcher_results.len(), self.pass_entries.len()),
+                entry.as_ref(),
                 x,
                 y,
                 width,
                 TEXT,
-                BG,
+                if start == self.match_cursor {
+                    0x0000bb0000
+                } else {
+                    BG
+                },
             );
-            for (idx, m) in self.matcher_results.iter().enumerate() {
-                let remaining_width = width.saturating_sub(x);
-                if remaining_width == 0 {
-                    break;
-                }
-                let Some(entry) = self.pass_entries.get(m.index as usize) else {
-                    panic!("Matcher indexed out of bounds");
-                };
-                x += draw_label(
-                    &mut buffer,
-                    &sf,
-                    entry.as_ref(),
-                    x,
-                    y,
-                    remaining_width,
-                    TEXT,
-                    if idx == self.match_cursor {
-                        0x0000bb0000
-                    } else {
-                        BG
-                    },
-                );
-            }
+            start += 1;
+            y += TEXT_BOX_HEIGHT;
         }
 
         buffer.present().expect("present");
@@ -364,14 +377,15 @@ where
                     self.exit_with_submit = true;
                     self.state.close();
                 }
-                EventResult::AutocompleteSelect => {
+                EventResult::AutocompleteSelect(dir) => {
                     let was_autcompleting = self.autocomplete_started;
                     self.autocomplete_started = true;
                     if was_autcompleting {
                         let result_count = self.matcher_results.len();
                         if result_count > 0 {
-                            // TODO: Selection can be off-screen
-                            self.match_cursor = (self.match_cursor + 1).rem_euclid(result_count);
+                            self.match_cursor = (self.match_cursor
+                                + if dir { 1 } else { result_count - 1 })
+                            .rem_euclid(result_count);
                             self.get_surface().window().request_redraw();
                         }
                     } else {
@@ -386,6 +400,7 @@ where
 
             winit::event::WindowEvent::ModifiersChanged(modifiers) => {
                 self.ctrl_down = modifiers.state().control_key();
+                self.shift_down = modifiers.state().shift_key();
             }
             _ => (),
         }
