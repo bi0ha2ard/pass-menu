@@ -104,10 +104,7 @@ where
 
             frame: 0,
             start_time: std::time::Instant::now(),
-            font: FontRef::try_from_slice(include_bytes!(
-                "/usr/share/fonts/truetype/DejaVuSans.ttf"
-            ))
-            .expect("font"),
+            font: FontRef::try_from_slice(include_bytes!(env!("CUSTOM_FONT_PATH", "font path must be set"))).expect("font"),
         }
     }
 

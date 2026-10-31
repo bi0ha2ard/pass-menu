@@ -17,11 +17,13 @@
       in
     {
       packages.default = craneLib.buildPackage {
+        CUSTOM_FONT_PATH = "${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuSans.ttf";
         src = craneLib.cleanCargoSource ./.;
         buildInputs = [
         ];
-        cargoExtraArgs = [ "--features" "wayland"];
+        cargoExtraArgs = "--features wayland";
         nativeBuildInputs = [
+          pkgs.makeWrapper
           pkgs.pkg-config
         ];
         postInstall = ''
@@ -35,6 +37,7 @@
         ];
         RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
         LD_LIBRARY_PATH = libPath;
+        CUSTOM_FONT_PATH = "${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuSans.ttf";
       };
 
       # devShell = with pkgs; mkShell {
