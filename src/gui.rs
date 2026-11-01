@@ -59,6 +59,15 @@ where
     font: ab_glyph::FontRef<'static>,
 }
 
+pub enum AppResult<'a, Candidate>
+where
+    Candidate: AsRef<str>,
+{
+    Match(&'a Candidate),
+    Partial(String),
+    Aborted,
+}
+
 enum EventResult {
     Exit,
     TextChanged,
@@ -104,17 +113,26 @@ where
 
             frame: 0,
             start_time: std::time::Instant::now(),
-            font: FontRef::try_from_slice(include_bytes!(env!("CUSTOM_FONT_PATH", "font path must be set"))).expect("font"),
+            font: FontRef::try_from_slice(include_bytes!(env!(
+                "CUSTOM_FONT_PATH",
+                "font path must be set"
+            )))
+            .expect("font"),
         }
     }
 
-    pub fn get_selected_entry(&self) -> Option<&Candidate> {
+    pub fn get_selected_entry(&self) -> AppResult<'a, Candidate> {
         if !self.exit_with_submit {
-            return None;
+            return AppResult::Aborted;
         }
-        self.matcher_results
+        if let Some(completed) = self
+            .matcher_results
             .get(self.match_cursor)
             .and_then(|hit| self.pass_entries.get(hit.index as usize))
+        {
+            return AppResult::Match(completed);
+        }
+        AppResult::Partial(self.entry_buffer.to_string())
     }
 
     fn backspace(&mut self, full_clear: bool) -> EventResult {

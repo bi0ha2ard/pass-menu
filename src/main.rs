@@ -3,7 +3,10 @@ use std::env;
 use softbuffer::Context;
 use winit::event_loop::{self, EventLoop};
 
-use crate::pass::{Config, Result, find_pw_store, get_entries};
+use crate::{
+    gui::AppResult,
+    pass::{Config, Result, find_pw_store, get_entries},
+};
 
 mod gui;
 mod painting;
@@ -48,7 +51,7 @@ fn main() -> Result<()> {
     event_loop.run_app(&mut app).expect("run");
 
     let config = Config::default();
-    if let Some(e) = app.get_selected_entry() {
+    if let AppResult::Match(e) = app.get_selected_entry() {
         println!("{}", e.name);
         return match command {
             Action::User => e.copy_user(&config),
