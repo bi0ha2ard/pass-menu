@@ -1,11 +1,8 @@
 use std::env;
 
-use softbuffer::Context;
-use winit::event_loop::{self, EventLoop};
-
 use crate::{
     gui::AppResult,
-    pass::{Config, Result, find_pw_store, get_entries},
+    pass::{Config, find_pw_store, get_entries},
 };
 
 mod gui;
@@ -19,7 +16,7 @@ enum Action {
     OpenUrl,
 }
 
-fn main() -> Result<()> {
+fn main() -> crate::pass::Result<()> {
     let (command, prompt) = if let Some(arg) = env::args().nth(1) {
         match arg.as_str() {
             "user" => (Action::User, "Copy user"),
@@ -37,21 +34,16 @@ fn main() -> Result<()> {
         eprintln!("Action required, pass one of 'user', 'pass', 'autotype', 'open'");
         return Err(pass::PassError::ArgFail);
     };
+
     let pw_dir = find_pw_store()?;
     let mut entries = get_entries(&pw_dir)?;
     entries.sort_unstable();
     entries.dedup();
 
-    let event_loop = EventLoop::new().expect("event loop");
-    event_loop.set_control_flow(event_loop::ControlFlow::Wait);
-    let context = Context::new(event_loop.owned_display_handle()).expect("display handle");
-
-    let mut app = gui::App::new(context, prompt, &entries);
-
-    event_loop.run_app(&mut app).expect("run");
+    let res = gui::run_app(prompt, &entries);
 
     let config = Config::default();
-    if let AppResult::Match(e) = app.get_selected_entry() {
+    if let AppResult::Match(e) = res {
         println!("{}", e.name);
         return match command {
             Action::User => e.copy_user(&config),

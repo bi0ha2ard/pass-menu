@@ -6,7 +6,7 @@ use winit::{
     application::ApplicationHandler,
     dpi::PhysicalSize,
     event::{KeyEvent, StartCause, WindowEvent},
-    event_loop::{ActiveEventLoop, OwnedDisplayHandle},
+    event_loop::{self, ActiveEventLoop, EventLoop, OwnedDisplayHandle},
     keyboard::{KeyCode, PhysicalKey},
     platform::modifier_supplement::KeyEventExtModifierSupplement,
     window::Window,
@@ -64,6 +64,7 @@ where
     Candidate: AsRef<str>,
 {
     Match(&'a Candidate),
+    #[allow(unused)]
     Partial(String),
     Aborted,
 }
@@ -435,4 +436,22 @@ where
             _ => (),
         }
     }
+}
+
+pub fn run_app<'a, Candidate>(
+    prompt: &'static str,
+    entries: &'a [Candidate],
+) -> AppResult<'a, Candidate>
+where
+    Candidate: AsRef<str>,
+{
+    let event_loop = EventLoop::new().expect("event loop");
+    event_loop.set_control_flow(event_loop::ControlFlow::Wait);
+    let context = Context::new(event_loop.owned_display_handle()).expect("display handle");
+
+    let mut app = App::new(context, prompt, &entries);
+
+    event_loop.run_app(&mut app).expect("run");
+
+    app.get_selected_entry()
 }

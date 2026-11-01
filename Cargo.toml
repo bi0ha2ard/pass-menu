@@ -3,6 +3,14 @@ name = "pass-menu"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "pass-menu"
+path = "src/pass-menu.rs"
+
+[[bin]]
+name = "ssh-menu"
+path = "src/ssh-menu.rs"
+
 [dependencies]
 ab_glyph = "0.2.32"
 frizbee = "0.13.0"
