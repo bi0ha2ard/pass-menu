@@ -29,6 +29,7 @@
         ];
         postInstall = ''
             wrapProgram "$out/bin/pass-menu" --prefix LD_LIBRARY_PATH : "${libPath}"
+            wrapProgram "$out/bin/ssh-menu" --prefix LD_LIBRARY_PATH : "${libPath}"
           '';
       };
 
