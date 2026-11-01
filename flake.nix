@@ -18,6 +18,7 @@
     {
       packages.default = craneLib.buildPackage {
         CUSTOM_FONT_PATH = "${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuSans.ttf";
+        CUSTOM_TERMINAL = "alacritty";
         src = craneLib.cleanCargoSource ./.;
         buildInputs = [
         ];
@@ -38,6 +39,7 @@
         RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
         LD_LIBRARY_PATH = libPath;
         CUSTOM_FONT_PATH = "${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuSans.ttf";
+        CUSTOM_TERMINAL = "alacritty";
       };
 
       # devShell = with pkgs; mkShell {

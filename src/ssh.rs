@@ -1,5 +1,3 @@
-use std::process::ExitStatus;
-
 #[derive(thiserror::Error, Debug)]
 pub enum SshError {
     #[error("SSH config could not be loaded")]
@@ -66,7 +64,7 @@ pub fn get_ssh_hosts() -> Result<Vec<SshTarget>> {
 }
 
 pub fn run_command(prog: &'static str, target: &SshTarget) -> Result<()> {
-    let mut cmd = std::process::Command::new("st");
+    let mut cmd = std::process::Command::new(option_env!("CUSTOM_TERMINAL").unwrap_or("st"));
     cmd.arg("-e")
         .arg(prog)
         .arg(target.as_ref())
