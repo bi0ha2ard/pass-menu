@@ -1,13 +1,10 @@
 use std::env;
 
-use crate::{
+use pass_menu::{
     gui::AppResult,
     pass::{Config, find_pw_store, get_entries},
+    pass
 };
-
-mod gui;
-mod painting;
-mod pass;
 
 enum Action {
     User,
@@ -16,7 +13,7 @@ enum Action {
     OpenUrl,
 }
 
-fn main() -> crate::pass::Result<()> {
+fn main() -> pass::Result<()> {
     let (command, prompt) = if let Some(arg) = env::args().nth(1) {
         match arg.as_str() {
             "user" => (Action::User, "Copy user"),
@@ -40,7 +37,7 @@ fn main() -> crate::pass::Result<()> {
     entries.sort_unstable();
     entries.dedup();
 
-    let res = gui::run_app(prompt, &entries, false);
+    let res = pass_menu::gui::run_app(prompt, &entries, false);
 
     let config = Config::default();
     if let AppResult::Match(e) = res {
