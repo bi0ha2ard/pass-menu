@@ -25,7 +25,7 @@ fn main() -> crate::ssh::Result<()> {
     let mut hosts = get_ssh_hosts()?;
     hosts.sort_unstable();
 
-    let res = gui::run_app(command, &hosts);
+    let res = gui::run_app(command, &hosts, false);
 
     match res {
         AppResult::Match(h) => ssh::run_command(command, h),

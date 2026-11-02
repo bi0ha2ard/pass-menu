@@ -11,6 +11,10 @@ path = "src/pass-menu.rs"
 name = "ssh-menu"
 path = "src/ssh-menu.rs"
 
+[[bin]]
+name = "man-menu"
+path = "src/man-menu.rs"
+
 [dependencies]
 ab_glyph = "0.2.32"
 frizbee = "0.13.0"

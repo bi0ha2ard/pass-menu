@@ -48,7 +48,7 @@ where
     entry_buffer: String,
 
     prompt: &'static str,
-    pass_entries: &'a [Candidate],
+    entries: &'a [Candidate],
     matcher: frizbee::Matcher,
     matcher_results: Vec<frizbee::Match>,
     match_cursor: usize,
@@ -96,17 +96,18 @@ where
     pub fn new(
         context: Context<OwnedDisplayHandle>,
         prompt: &'static str,
-        pass_entries: &'a [Candidate],
+        entries: &'a [Candidate],
+        immediate_autocomplete: bool
     ) -> Self {
         Self {
             context,
             state: AppState::Initial,
             ctrl_down: false,
             shift_down: false,
-            autocomplete_started: false,
+            autocomplete_started: immediate_autocomplete,
             prompt,
             entry_buffer: String::with_capacity(MAX_ENTRY_LEN),
-            pass_entries,
+            entries,
             exit_with_submit: false,
             matcher: frizbee::Matcher::new("", &frizbee::Config::default()),
             matcher_results: Vec::default(),
@@ -129,7 +130,7 @@ where
         if let Some(completed) = self
             .matcher_results
             .get(self.match_cursor)
-            .and_then(|hit| self.pass_entries.get(hit.index as usize))
+            .and_then(|hit| self.entries.get(hit.index as usize))
         {
             return AppResult::Match(completed);
         }
@@ -215,7 +216,7 @@ where
         }
 
         self.matcher.set_pattern(self.entry_buffer.clone());
-        self.matcher_results = self.matcher.match_list(&self.pass_entries);
+        self.matcher_results = self.matcher.match_list(&self.entries);
     }
 
     fn get_surface(&mut self) -> &mut Surface<OwnedDisplayHandle, Rc<Window>> {
@@ -290,7 +291,7 @@ where
             && let Some(entry) = self
                 .matcher_results
                 .get(start)
-                .and_then(|e| self.pass_entries.get(e.index as usize))
+                .and_then(|e| self.entries.get(e.index as usize))
         {
             let x_offs = if start == self.match_cursor { 10 } else { 0 };
             draw_label(
@@ -441,6 +442,7 @@ where
 pub fn run_app<'a, Candidate>(
     prompt: &'static str,
     entries: &'a [Candidate],
+    immediate_autocomplete: bool
 ) -> AppResult<'a, Candidate>
 where
     Candidate: AsRef<str>,
@@ -449,7 +451,7 @@ where
     event_loop.set_control_flow(event_loop::ControlFlow::Wait);
     let context = Context::new(event_loop.owned_display_handle()).expect("display handle");
 
-    let mut app = App::new(context, prompt, &entries);
+    let mut app = App::new(context, prompt, &entries, immediate_autocomplete);
 
     event_loop.run_app(&mut app).expect("run");
 

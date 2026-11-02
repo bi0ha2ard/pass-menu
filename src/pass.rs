@@ -273,7 +273,7 @@ pub enum PassError {
     #[error("Could not send data to child process")]
     IOError,
 
-    #[error("Pass exited non-zero")]
+    #[error("Process exited non-zero")]
     ProcessExited(&'static str, i32),
 
     #[error("Could not parse as UTF-8")]

@@ -40,11 +40,10 @@ fn main() -> crate::pass::Result<()> {
     entries.sort_unstable();
     entries.dedup();
 
-    let res = gui::run_app(prompt, &entries);
+    let res = gui::run_app(prompt, &entries, false);
 
     let config = Config::default();
     if let AppResult::Match(e) = res {
-        println!("{}", e.name);
         return match command {
             Action::User => e.copy_user(&config),
             Action::Pass => e.copy_pass(&config),
