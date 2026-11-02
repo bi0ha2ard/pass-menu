@@ -12,6 +12,7 @@ impl<'a> ManEntry<'a> {
 
         let mut cmd = std::process::Command::new(option_env!("CUSTOM_TERMINAL").unwrap_or("st"));
         cmd.args(["-e", "man", section, self.title])
+            .env("MANPAGER", "nvim +Man!")
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null());
