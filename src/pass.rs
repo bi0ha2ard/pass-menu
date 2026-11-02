@@ -34,8 +34,9 @@ impl Default for Config {
             "-selection".to_string(),
             "clipboard".to_string(),
             "-rmlastnl".to_string(),
-            "-wait".to_string(),
-            "45000".to_string(),
+            "-loops".to_string(),
+            "1".to_string(),
+            "-in".to_string(),
             ]),
             feature = "wayland" => ("wl-copy".to_string(),
             vec![
@@ -46,7 +47,7 @@ impl Default for Config {
         };
         let (do_tool_binary, do_tool_type_args, do_tool_tab_args) = cfg_select! {
             feature = "x11" => ("xdotool".to_string(),
-            vec!["type".to_string(), "--clearmodifiers".to_string()],
+            vec!["type".to_string(), "--clearmodifiers".to_string(), "--file".to_string(), "-".to_string()],
             vec![
             "key".to_string(),
             "--clearmodifiers".to_string(),
