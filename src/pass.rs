@@ -346,7 +346,11 @@ fn get_entries_impl(
     {
         let path = entry.path();
         if path.is_dir() {
-            let suffix = path.file_name().unwrap_or_default().display();
+            let fname = path.file_name().unwrap_or_default();
+            if fname.eq_ignore_ascii_case(".git") {
+                continue;
+            }
+            let suffix = fname.display();
             let new_prefix = if prefix.is_empty() {
                 suffix.to_string()
             } else {
