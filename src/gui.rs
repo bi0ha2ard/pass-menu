@@ -149,6 +149,11 @@ where
     }
 
     fn handle_keyboard(&mut self, key_event: &KeyEvent) -> EventResult {
+        // X11 keyboard event leak from launch hotkey
+        #[cfg(feature = "x11")]
+        if self.frame < 2 && self.start_time.elapsed() < std::time::Duration::from_millis(16) {
+            return EventResult::Nothing;
+        }
         if !key_event.state.is_pressed() {
             return EventResult::Nothing;
         }
@@ -171,11 +176,6 @@ where
                 return EventResult::AutocompleteSelect(!self.shift_down);
             }
             _ => {}
-        }
-        // X11 keyboard event leak from launch hotkey
-        #[cfg(feature = "x11")]
-        if self.frame < 2 && self.start_time.elapsed() < std::time::Duration::from_millis(16) {
-            return EventResult::Nothing;
         }
         if let Some(t) = key_event.text.as_ref() {
             if self.entry_buffer.len() >= MAX_ENTRY_LEN {
