@@ -8,6 +8,7 @@ use pass_menu::{
 
 enum Action {
     User,
+    TypeUser,
     Pass,
     AutoType,
     OpenUrl,
@@ -17,12 +18,13 @@ fn main() -> pass::Result<()> {
     let (command, prompt) = if let Some(arg) = env::args().nth(1) {
         match arg.as_str() {
             "user" => (Action::User, "Copy user"),
+            "typeuser" => (Action::TypeUser, "Type user"),
             "pass" => (Action::Pass, "Copy password"),
             "autotype" => (Action::AutoType, "Autotype"),
             "open" => (Action::OpenUrl, "Open URL"),
             _ => {
                 eprintln!(
-                    "Invalid argument '{arg}', pass one of 'user', 'pass', 'autotype', 'open'"
+                    "Invalid argument '{arg}', pass one of 'user', 'typeuser', 'pass', 'autotype', 'open'"
                 );
                 return Err(pass::PassError::ArgFail);
             }
@@ -43,6 +45,7 @@ fn main() -> pass::Result<()> {
     if let AppResult::Match(e) = res {
         return match command {
             Action::User => e.copy_user(&config),
+            Action::TypeUser => e.type_user(&config),
             Action::Pass => e.copy_pass(&config),
             Action::AutoType => e.auto_type(&config),
             Action::OpenUrl => e.open_url(&config),

@@ -77,6 +77,7 @@ impl Default for Config {
 const GPG_EXT: &str = ".gpg";
 const USER_FIELD: &str = "user:";
 const URL_FIELD: &str = "url:";
+const AUTOTYPE_START_DELAY: Duration = Duration::from_millis(500);
 
 fn field_from_stdout(stdout: &[u8], field: &str) -> Result<String> {
     for line in stdout.split(|c| *c == b'\n').skip(2) {
@@ -220,6 +221,12 @@ impl Entry {
         Ok(())
     }
 
+    pub fn type_user(&self, config: &Config) -> Result<()> {
+        let user = self.get_user(config)?;
+        sleep(AUTOTYPE_START_DELAY);
+        do_type(&user, config)
+    }
+
     pub fn auto_type(&self, config: &Config) -> Result<()> {
         let stdout = self.get_pass_stdout(config)?;
         let pass = pass_from_stdout(&stdout)?;
@@ -227,7 +234,7 @@ impl Entry {
 
         // TODO: potentially disable auto-repeat with xset?
 
-        sleep(Duration::from_secs(1));
+        sleep(AUTOTYPE_START_DELAY);
         do_type(&user, config)?;
         do_tab(config)?;
         sleep(Duration::from_millis(100));
