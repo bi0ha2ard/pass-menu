@@ -1,6 +1,7 @@
 use std::{
     io::Write,
     path::{Path, PathBuf},
+    process::ExitStatus,
     thread::sleep,
     time::Duration,
 };
@@ -24,6 +25,83 @@ pub struct Config {
     do_tool_type_args: Vec<String>,
     do_tool_tab_args: Vec<String>,
     open_tool: String,
+}
+
+struct RepeatToggle {
+    must_reenable: bool,
+}
+
+const AUTO_REPAET_PREFIX: &str = "auto repeat:";
+
+fn parse_repeat_rate(stdout: &[u8]) -> bool {
+    let Ok(text) = str::from_utf8(stdout) else {
+        return false;
+    };
+    let Some(offs) = text.find(AUTO_REPAET_PREFIX) else {
+        return false;
+    };
+    let tail = text[offs + AUTO_REPAET_PREFIX.len()..].trim_start();
+    tail.starts_with("on")
+}
+
+#[cfg(feature = "x11")]
+fn try_disable_kb_repeat() -> Result<bool> {
+    let mut cmd = std::process::Command::new("xset");
+    cmd.arg("q")
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null());
+    let res = cmd
+        .spawn()
+        .map_err(PassError::from_xset_spawn)?
+        .wait_with_output()
+        .map_err(PassError::from_xset_spawn)?;
+    if !res.status.success() {
+        return Err(PassError::ProcessExited(
+            "xset",
+            res.status.code().unwrap_or_default(),
+        ));
+    }
+    let enabled = parse_repeat_rate(&res.stdout);
+    if enabled {
+        let _ = set_kb_repeat(false);
+    }
+    Ok(enabled)
+}
+
+#[cfg(feature = "x11")]
+fn set_kb_repeat(enabled: bool) -> Result<ExitStatus> {
+    let mut cmd = std::process::Command::new("xset");
+    cmd.arg("r")
+        .arg(if enabled { "on" } else { "off" })
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null());
+    cmd.spawn()
+        .map_err(PassError::from_xset_spawn)?
+        .wait()
+        .map_err(PassError::from_xset_spawn)
+}
+
+impl RepeatToggle {
+    fn new() -> Self {
+        Self {
+            must_reenable: cfg_select! {
+                feature = "x11" => {try_disable_kb_repeat().unwrap_or_default()}
+                feature = "wayland" => {false}
+            },
+        }
+    }
+}
+
+#[cfg(feature = "x11")]
+impl Drop for RepeatToggle {
+    fn drop(&mut self) {
+        if !self.must_reenable {
+            return;
+        }
+        let _ = set_kb_repeat(true);
+    }
 }
 
 impl Default for Config {
@@ -221,8 +299,11 @@ impl Entry {
 
     pub fn type_user(&self, config: &Config) -> Result<()> {
         let user = self.get_user(config)?;
+        let guard = RepeatToggle::new();
         sleep(AUTOTYPE_START_DELAY);
-        do_type(&user, config)
+        let res = do_type(&user, config);
+        drop(guard);
+        res
     }
 
     pub fn auto_type(&self, config: &Config) -> Result<()> {
@@ -230,13 +311,15 @@ impl Entry {
         let pass = pass_from_stdout(&stdout)?;
         let user = field_from_stdout(&stdout, USER_FIELD)?;
 
-        // TODO: potentially disable auto-repeat with xset?
+        let guard = RepeatToggle::new();
 
         sleep(AUTOTYPE_START_DELAY);
         do_type(&user, config)?;
         do_tab(config)?;
         sleep(Duration::from_millis(100));
-        do_type(&pass, config)
+        let res = do_type(&pass, config);
+        drop(guard);
+        res
     }
 
     pub fn open_url(&self, config: &Config) -> Result<()> {
@@ -271,6 +354,9 @@ pub enum PassError {
 
     #[error("Autotype failed")]
     AutoTypeError(std::io::Error),
+
+    #[error("xset failed")]
+    XsetError(std::io::Error),
 
     #[error("Autotype failed")]
     UrlOpenError(std::io::Error),
@@ -310,6 +396,10 @@ impl PassError {
 
     fn from_autotype_spawn(err: std::io::Error) -> Self {
         Self::AutoTypeError(err)
+    }
+
+    fn from_xset_spawn(err: std::io::Error) -> Self {
+        Self::XsetError(err)
     }
 }
 

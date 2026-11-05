@@ -39,8 +39,8 @@ fn main() -> pass::Result<()> {
             "open" => (Action::OpenUrl, "Open URL"),
             "help" | "--help" | "-h" => {
                 help();
-                return Ok(())
-            },
+                return Ok(());
+            }
             _ => {
                 eprintln!("Invalid argument '{arg}'");
                 help();
@@ -72,8 +72,8 @@ fn main() -> pass::Result<()> {
         return worked.inspect_err(|err| {
             println!("{err:?}");
             match err {
-                pass::PassError::StoreDiscoveryError(_) => {} // should not reach here
-                pass::PassError::EnvironmentError => {}       // should not reach here
+                pass::PassError::StoreDiscoveryError(_) => {}
+                pass::PassError::EnvironmentError => {}
                 pass::PassError::PassError(error) => {
                     let _ = notify::notify("pass-menu", "pass failed", &error.to_string());
                 }
@@ -99,11 +99,12 @@ fn main() -> pass::Result<()> {
                         );
                     }
                 },
-                pass::PassError::DecodeFail => {} // unlikely
+                pass::PassError::DecodeFail => {}
                 pass::PassError::ParseFail(e) => {
                     let _ = notify::notify("pass-menu", "Parse failed", &e);
                 }
-                pass::PassError::ArgFail => {} // can't happen here
+                pass::PassError::ArgFail => {}
+                pass::PassError::XsetError(_) => {}
             }
         });
     }

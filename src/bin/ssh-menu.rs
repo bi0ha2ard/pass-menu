@@ -2,8 +2,8 @@ use std::env;
 
 use pass_menu::{
     gui::AppResult,
+    ssh,
     ssh::{SshTarget, get_ssh_hosts},
-    ssh
 };
 
 fn main() -> ssh::Result<()> {

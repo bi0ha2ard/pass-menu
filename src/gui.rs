@@ -97,7 +97,7 @@ where
         context: Context<OwnedDisplayHandle>,
         prompt: &'static str,
         entries: &'a [Candidate],
-        immediate_autocomplete: bool
+        immediate_autocomplete: bool,
     ) -> Self {
         Self {
             context,
@@ -442,7 +442,7 @@ where
 pub fn run_app<'a, Candidate>(
     prompt: &'static str,
     entries: &'a [Candidate],
-    immediate_autocomplete: bool
+    immediate_autocomplete: bool,
 ) -> AppResult<'a, Candidate>
 where
     Candidate: AsRef<str>,
