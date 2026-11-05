@@ -93,9 +93,7 @@ fn field_from_stdout(stdout: &[u8], field: &str) -> Result<String> {
             return Ok(user.to_string());
         }
     }
-    Err(PassError::ParseFail(
-        "Field '{field}' not found".to_string(),
-    ))
+    Err(PassError::ParseFail(format!("Field '{field}' not found")))
 }
 
 fn pass_from_stdout(stdout: &[u8]) -> Result<String> {

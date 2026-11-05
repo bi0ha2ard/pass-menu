@@ -2,8 +2,8 @@ use std::env;
 
 use pass_menu::{
     gui::AppResult,
-    pass::{Config, find_pw_store, get_entries},
-    pass
+    notify,
+    pass::{self, Config, find_pw_store, get_entries},
 };
 
 enum Action {
@@ -43,13 +43,50 @@ fn main() -> pass::Result<()> {
 
     let config = Config::default();
     if let AppResult::Match(e) = res {
-        return match command {
+        let worked = match command {
             Action::User => e.copy_user(&config),
             Action::TypeUser => e.type_user(&config),
             Action::Pass => e.copy_pass(&config),
             Action::AutoType => e.auto_type(&config),
             Action::OpenUrl => e.open_url(&config),
         };
+        return worked.inspect_err(|err| {
+            println!("{err:?}");
+            match err {
+                pass::PassError::StoreDiscoveryError(_) => {} // should not reach here
+                pass::PassError::EnvironmentError => {}           // should not reach here
+                pass::PassError::PassError(error) => {
+                    let _ = notify::notify("pass-menu", "pass failed", &error.to_string());
+                }
+                pass::PassError::ClipError(error) => {
+                    let _ = notify::notify("pass-menu", "clip failed", &error.to_string());
+                }
+                pass::PassError::AutoTypeError(error) => {
+                    let _ = notify::notify("pass-menu", "Auto Type", &error.to_string());
+                }
+                pass::PassError::UrlOpenError(error) => {
+                    let _ = notify::notify("pass-menu", "URL Open", &error.to_string());
+                }
+                pass::PassError::IOError => {
+                    let _ = notify::notify("pass-menu", "IO Error", &err.to_string());
+                }
+                pass::PassError::ProcessExited(proc, _) => match proc {
+                    &"pass" => {}
+                    _ => {
+                        let _ = notify::notify(
+                            "pass-menu",
+                            &format!("{proc} failed"),
+                            &err.to_string(),
+                        );
+                    }
+                },
+                pass::PassError::DecodeFail => {} // unlikely
+                pass::PassError::ParseFail(e) => {
+                    let _ = notify::notify("pass-menu", "Parse failed", &e);
+                }
+                pass::PassError::ArgFail => {} // can't happen here
+            }
+        });
     }
     Ok(())
 }
