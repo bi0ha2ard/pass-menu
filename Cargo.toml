@@ -3,6 +3,7 @@ name = "pass-menu"
 version = "0.1.0"
 edition = "2024"
 license = "ISC"
+publish = false
 
 [dependencies]
 ab_glyph = "0.2.32"

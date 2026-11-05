@@ -14,6 +14,21 @@ enum Action {
     OpenUrl,
 }
 
+fn help() {
+    println!(
+        r#"Usage: pass-menu <command>
+
+Commands:
+    autotype    Types out <user><TAB><password>
+    typeuser    Types out <user>
+    user        Copies <user> to clipboard
+    pass        Copies <password> to clipboard
+    open        Opens <url> field with xdg-open
+    help        Shows this help
+"#
+    );
+}
+
 fn main() -> pass::Result<()> {
     let (command, prompt) = if let Some(arg) = env::args().nth(1) {
         match arg.as_str() {
@@ -22,15 +37,19 @@ fn main() -> pass::Result<()> {
             "pass" => (Action::Pass, "Copy password"),
             "autotype" => (Action::AutoType, "Autotype"),
             "open" => (Action::OpenUrl, "Open URL"),
+            "help" | "--help" | "-h" => {
+                help();
+                return Ok(())
+            },
             _ => {
-                eprintln!(
-                    "Invalid argument '{arg}', pass one of 'user', 'typeuser', 'pass', 'autotype', 'open'"
-                );
+                eprintln!("Invalid argument '{arg}'");
+                help();
                 return Err(pass::PassError::ArgFail);
             }
         }
     } else {
-        eprintln!("Action required, pass one of 'user', 'pass', 'autotype', 'open'");
+        eprintln!("Action required");
+        help();
         return Err(pass::PassError::ArgFail);
     };
 
@@ -54,7 +73,7 @@ fn main() -> pass::Result<()> {
             println!("{err:?}");
             match err {
                 pass::PassError::StoreDiscoveryError(_) => {} // should not reach here
-                pass::PassError::EnvironmentError => {}           // should not reach here
+                pass::PassError::EnvironmentError => {}       // should not reach here
                 pass::PassError::PassError(error) => {
                     let _ = notify::notify("pass-menu", "pass failed", &error.to_string());
                 }
