@@ -113,7 +113,7 @@ impl Default for Config {
             "clipboard".to_string(),
             "-rmlastnl".to_string(),
             "-loops".to_string(),
-            "1".to_string(),
+            "1".to_string(), // Can break on xfce4 because xfsettingsd takes one clipboard loop...
             "-in".to_string(),
             ]),
             feature = "wayland" => ("wl-copy".to_string(),
@@ -302,6 +302,16 @@ impl Entry {
         let guard = RepeatToggle::new();
         sleep(AUTOTYPE_START_DELAY);
         let res = do_type(&user, config);
+        drop(guard);
+        res
+    }
+
+    pub fn type_pass(&self, config: &Config) -> Result<()> {
+        let stdout = self.get_pass_stdout(config)?;
+        let pass = pass_from_stdout(&stdout)?;
+        let guard = RepeatToggle::new();
+        sleep(AUTOTYPE_START_DELAY);
+        let res = do_type(&pass, config);
         drop(guard);
         res
     }

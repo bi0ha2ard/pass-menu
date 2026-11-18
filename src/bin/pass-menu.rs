@@ -9,6 +9,7 @@ use pass_menu::{
 enum Action {
     User,
     TypeUser,
+    TypePass,
     Pass,
     AutoType,
     OpenUrl,
@@ -21,6 +22,7 @@ fn help() {
 Commands:
     autotype    Types out <user><TAB><password>
     typeuser    Types out <user>
+    typepass    Types out <password>
     user        Copies <user> to clipboard
     pass        Copies <password> to clipboard
     open        Opens <url> field with xdg-open
@@ -34,6 +36,7 @@ fn main() -> pass::Result<()> {
         match arg.as_str() {
             "user" => (Action::User, "Copy user"),
             "typeuser" => (Action::TypeUser, "Type user"),
+            "typepass" => (Action::TypePass, "Type password"),
             "pass" => (Action::Pass, "Copy password"),
             "autotype" => (Action::AutoType, "Autotype"),
             "open" => (Action::OpenUrl, "Open URL"),
@@ -65,6 +68,7 @@ fn main() -> pass::Result<()> {
         let worked = match command {
             Action::User => e.copy_user(&config),
             Action::TypeUser => e.type_user(&config),
+            Action::TypePass => e.type_pass(&config),
             Action::Pass => e.copy_pass(&config),
             Action::AutoType => e.auto_type(&config),
             Action::OpenUrl => e.open_url(&config),
